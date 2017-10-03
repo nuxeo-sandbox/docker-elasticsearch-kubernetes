@@ -1,0 +1,84 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  labels:
+    component: elasticsearch
+    role: data
+spec:
+  serviceName: elasticsearch-data
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: data
+    spec:
+      serviceAccountName: elasticsearch
+      containers:
+      - name: es-data
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+              - IPC_LOCK
+        image: docker-registry.default.svc:5000/nuxeo/elasticsearch-image
+        imagePullPolicy: Always
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: "CLUSTER_NAME"
+          value: cluster
+        - name: NODE_MASTER
+          value: "false"
+        - name: NODE_INGEST
+          value: "false"
+        - name: HTTP_ENABLE
+          value: "false"
+        - name: DISCOVERY_SERVICE
+          value: elasticsearch-discovery
+        - name: "ES_JAVA_OPTS"
+          value: "-Xms256m -Xmx256m"
+        ports:
+        - containerPort: 9300
+          name: transport
+          protocol: TCP
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /usr/share/elasticsearch/config
+      initContainers:
+      - command:
+          - sysctl
+          - '-w'
+          - vm.max_map_count=262144
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        name: sysctl
+        securityContext:
+          privileged: true
+      volumes:
+        - name: config
+          configMap:
+            name: elasticsearch-config
+
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app: ${APPLICATION_NAME}   
+      annotations:
+        volume.beta.kubernetes.io/storage-class: aws-fast
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+

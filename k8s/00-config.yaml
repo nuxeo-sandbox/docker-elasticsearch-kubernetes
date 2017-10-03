@@ -1,0 +1,84 @@
+kind: ConfigMap
+metadata:
+  name: ${APPLICATION_NAME}-elasticsearch-config
+  labels:
+    app: ${APPLICATION_NAME}
+    component: elasticsearch
+    role: config
+apiVersion: v1
+data:
+  log4j2.properties: |-
+    appender.rolling.type = RollingFile 
+    appender.rolling.name = rolling
+    appender.rolling.fileName = ${sys:es.logs.base_path}${sys:file.separator}${sys:es.logs.cluster_name}.log 
+    appender.rolling.layout.type = PatternLayout
+    appender.rolling.layout.pattern = [%d{ISO8601}][%-5p][%-25c{1.}] %marker%.-10000m%n
+    appender.rolling.filePattern = ${sys:es.logs.base_path}${sys:file.separator}${sys:es.logs.cluster_name}-%d{yyyy-MM-dd}-%i.log.gz 
+    appender.rolling.policies.type = Policies
+    appender.rolling.policies.time.type = TimeBasedTriggeringPolicy 
+    appender.rolling.policies.time.interval = 1 
+    appender.rolling.policies.time.modulate = true 
+    appender.rolling.policies.size.type = SizeBasedTriggeringPolicy 
+    appender.rolling.policies.size.size = 256MB 
+    appender.rolling.strategy.type = DefaultRolloverStrategy
+    appender.rolling.strategy.fileIndex = nomax
+    appender.rolling.strategy.action.type = Delete 
+    appender.rolling.strategy.action.basepath = ${sys:es.logs.base_path}
+    appender.rolling.strategy.action.condition.type = IfFileName 
+    appender.rolling.strategy.action.condition.glob = ${sys:es.logs.cluster_name}-* 
+    appender.rolling.strategy.action.condition.nested_condition.type = IfAccumulatedFileSize 
+    appender.rolling.strategy.action.condition.nested_condition.exceeds = 2GB 
+  elasticsearch.yml: |-
+    cluster:
+      name: ${CLUSTER_NAME}
+
+    node:
+      master: ${NODE_MASTER}
+      data: ${NODE_DATA}
+
+    network.host: ${NETWORK_HOST}
+
+    path:
+      data: /usr/share/elasticsearch/data
+      logs: /usr/share/elasticsearch/data/log
+      work: /usr/share/elasticsearch/data/work
+      plugins: /usr/share/elasticsearch/plugins
+
+    bootstrap.mlockall: true
+
+    http:
+      enabled: ${HTTP_ENABLE}
+      compression: true
+      cors:
+        enabled: ${HTTP_CORS_ENABLE}
+        allow-origin: ${HTTP_CORS_ALLOW_ORIGIN}
+
+    cloud:
+      kubernetes:
+        service: ${DISCOVERY_SERVICE}
+        namespace: ${NAMESPACE}
+    discovery:
+      type: kubernetes
+      zen:
+        minimum_master_nodes: ${NUMBER_OF_MASTERS}
+
+    index:
+        number_of_shards: ${NUMBER_OF_SHARDS}
+        number_of_replicas: ${NUMBER_OF_REPLICAS}
+
+  logging.yml: |
+    # you can override this using by setting a system property, for example -Des.logger.level=DEBUG
+    es.logger.level: INFO
+    rootLogger: ${es.logger.level}, console
+    logger:
+      # log action execution errors for easier debugging
+      action: DEBUG
+      # reduce the logging for aws, too much is logged under the default INFO
+      com.amazonaws: WARN
+
+    appender:
+      console:
+        type: console
+        layout:
+          type: consolePattern
+          conversionPattern: "[%d{ISO8601}][%-5p][%-25c] %m%n"
