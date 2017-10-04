@@ -1,4 +1,7 @@
 FROM elasticsearch:2.4.5
+MAINTAINER Nuxeo <packagers@nuxeo.com>
+
+RUN /usr/share/elasticsearch/bin/plugin install io.fabric8/elasticsearch-cloud-kubernetes/2.4.5 --verbose
 ENV ES_HEAP_SIZE 512m
 ENV CLUSTER_NAME elasticsearch-default
 ENV NODE_MASTER true
