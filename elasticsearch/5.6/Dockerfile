@@ -1,7 +1,7 @@
 FROM elasticsearch:5.6.4
 MAINTAINER Nuxeo <packagers@nuxeo.com>
 
-ENV ES_HEAP_SIZE 512m
+ENV ES_JAVA_OPTS -Xms512m -Xmx512m 
 ENV CLUSTER_NAME elasticsearch-default
 ENV DISCOVERY_SERVICE elasticsearch-discovery
 ENV NODE_MASTER true
